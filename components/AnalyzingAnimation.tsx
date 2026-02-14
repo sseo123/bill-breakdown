@@ -24,7 +24,7 @@ export function AnalyzingAnimation({ onComplete }: AnalyzingAnimationProps) {
         if (prev < steps.length - 1) return prev + 1
         return prev
       })
-    }, 1500)
+    }, 1700)
     return () => clearInterval(interval)
   }, [])
 
@@ -32,7 +32,7 @@ export function AnalyzingAnimation({ onComplete }: AnalyzingAnimationProps) {
     if (currentStep === steps.length - 1) {
       const timeout = setTimeout(() => {
         onComplete?.()
-      }, 2000)
+      }, 2200)
       return () => clearTimeout(timeout)
     }
   }, [currentStep, onComplete])

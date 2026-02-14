@@ -22,13 +22,13 @@ export function LoadingAnimation({ onComplete }: LoadingAnimationProps) {
 
   useEffect(() => {
     const timings: { phase: AnimationPhase; delay: number }[] = [
-      { phase: "pdf-to-folder", delay: 800 },
-      { phase: "pdf-entering-folder", delay: 1200 },
-      { phase: "folder-close", delay: 700 },
-      { phase: "folder-to-ai", delay: 1400 },
+      { phase: "pdf-to-folder", delay: 900 },
+      { phase: "pdf-entering-folder", delay: 1300 },
+      { phase: "folder-close", delay: 900 },
+      { phase: "folder-to-ai", delay: 1300 },
       { phase: "folder-entering-ai", delay: 900 },
-      { phase: "ai-analyzing", delay: 2600 },
-      { phase: "ai-complete", delay: 1400 },
+      { phase: "ai-analyzing", delay: 1300 },
+      { phase: "ai-complete", delay: 1300 },
     ]
 
     const timeouts: NodeJS.Timeout[] = []

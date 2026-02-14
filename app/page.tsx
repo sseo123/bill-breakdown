@@ -61,6 +61,9 @@ export default function BillAnalyzer() {
   const likelihoodPct = data?.errorAnalysis?.likelihoodPct ?? 0
   const suspicious = likelihoodPct >= 50
 
+  const [animationFinished, setAnimationFinished] = useState(false);
+
+
   const sortedTips = useMemo(() => {
     const tips = Array.isArray(data?.savingsTips) ? [...(data!.savingsTips as any)] : []
     return tips.sort(
@@ -90,6 +93,7 @@ export default function BillAnalyzer() {
     setLoading(false)
     setActiveTab(1)
     analysisDoneRef.current = false
+    setAnimationFinished(false)
     savingsPhaseEnteredAtRef.current = null
   }
 
@@ -129,37 +133,27 @@ export default function BillAnalyzer() {
     }
   }
 
-  const handleGenerate = async () => {
+const handleGenerate = async () => {
     if (!pendingFile) return
 
     setView("ANALYZING")
     setLoadingPhase("drag-drop")
-    savingsPhaseEnteredAtRef.current = null
-
-    void runAnalysis(pendingFile)
+    
+    // We use the runAnalysis helper you already wrote
+    runAnalysis(pendingFile) 
   }
 
-  // savings phase 최소 노출 + 분석 완료 후 RESULT 진입
+  // 2. Combined and Cleaned useEffect (removed the duplicate)
   useEffect(() => {
-    if (view !== "ANALYZING") return
+    if (view !== "ANALYZING") return;
 
-    if (loadingPhase === "savings") {
-      if (savingsPhaseEnteredAtRef.current == null) {
-        savingsPhaseEnteredAtRef.current = Date.now()
-      }
-
-      const tick = () => {
-        const enteredAt = savingsPhaseEnteredAtRef.current ?? Date.now()
-        const shownLongEnough = Date.now() - enteredAt >= 1300
-        if (shownLongEnough && analysisDoneRef.current) {
-          setView("RESULT")
-        }
-      }
-
-      const id = window.setInterval(tick, 200)
-      return () => window.clearInterval(id)
+    // We only move to the result once BOTH are true:
+    // 1. The SavingsAnimation has finished its cycle (animationFinished)
+    // 2. The API call is done (analysisDoneRef.current)
+    if (animationFinished && analysisDoneRef.current) {
+      setView("RESULT");
     }
-  }, [view, loadingPhase])
+  }, [view, animationFinished, loading]);
 
   return (
     <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6 font-sans text-foreground">
@@ -343,24 +337,25 @@ export default function BillAnalyzer() {
                   <AnalyzingAnimation onComplete={() => setLoadingPhase("savings")} />
                 </motion.div>
               )}
-
-              {loadingPhase === "savings" && (
-                <motion.div
-                  key="phase3"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.05 }}
-                  transition={{ duration: 0.5 }}
-                  className="w-full max-w-4xl p-10 py-20 bg-white shadow-2xl rounded-[3rem] border border-slate-100 flex flex-col items-center justify-center overflow-hidden"
-                >
-                  <SavingsAnimation />
-                  <div className="px-8 pb-8 -mt-2 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      {loading ? "Finalizing insights…" : "Almost done…"}
-                    </p>
-                  </div>
-                </motion.div>
-              )}
+{loadingPhase === "savings" && (
+  <motion.div
+    key="phase3"
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
+    exit={{ opacity: 0, scale: 1.05 }}
+    transition={{ duration: 0.5 }}
+    className="w-full max-w-4xl p-10 py-20 bg-white shadow-2xl rounded-[3rem] border border-slate-100 flex flex-col items-center justify-center overflow-hidden"
+  >
+    {/* Pass the state setter directly to onComplete */}
+    <SavingsAnimation onComplete={() => setAnimationFinished(true)} />
+    
+    <div className="px-8 pb-8 -mt-2 text-center">
+      <p className="text-sm text-muted-foreground">
+        {loading ? "Finalizing insights…" : "Almost done…"}
+      </p>
+    </div>
+  </motion.div>
+)}
             </AnimatePresence>
           )}
 
