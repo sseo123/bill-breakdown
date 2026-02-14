@@ -38,7 +38,7 @@ export function AnalyzingAnimation({ onComplete }: AnalyzingAnimationProps) {
   }, [currentStep, onComplete])
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+    <div className="flex flex-col items-center justify-center text-center">
       {/* Floating Document with scan effect */}
       <div className="relative w-48 h-48 mb-10">
         {/* Background glow */}

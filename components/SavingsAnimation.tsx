@@ -34,7 +34,7 @@ export function SavingsAnimation({ onComplete }: SavingsAnimationProps) {
   }, [onComplete])
 
   return (
-    <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+    <div className="flex flex-col items-center justify-center text-center">
       {/* Large leaf circle */}
       <div className="relative mb-8">
         {/* Outer pulse rings */}
