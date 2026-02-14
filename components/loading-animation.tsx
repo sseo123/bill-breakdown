@@ -49,7 +49,7 @@ export function LoadingAnimation({ onComplete }: LoadingAnimationProps) {
   }, [onComplete])
 
   return (
-    <div className="relative flex items-center justify-center w-full max-w-3xl mx-auto h-72 select-none overflow-hidden">
+    <div className="relative flex items-center justify-center w-full max-w-3xl mx-auto h-[300px] select-none overflow-hidden">
       {/* Connection Lines */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
@@ -165,7 +165,7 @@ export function LoadingAnimation({ onComplete }: LoadingAnimationProps) {
               ? "left-[55%] opacity-100 scale-90 duration-[1200ms]"
               : "left-[63%] opacity-0 scale-50 duration-[600ms]"
           }`}
-          style={{ top: "50%", transform: "translateY(-50%)" }}
+          style={{ top: "46%", transform: "translateY(-50%)" }}
         >
           <div className="relative w-20 h-16 rounded-lg bg-[hsl(160,55%,42%)]/20 border-2 border-[hsl(160,55%,42%)]/35">
             <div className="absolute -top-2 left-2 w-8 h-3 rounded-t-md bg-[hsl(160,55%,42%)]/25 border-2 border-b-0 border-[hsl(160,55%,42%)]/35" />
@@ -215,7 +215,7 @@ export function LoadingAnimation({ onComplete }: LoadingAnimationProps) {
               )}
             </div>
 
-            {phase === "ai-analyzing" && <MagnifyingGlass />}
+            {phase === "ai-analyzing"}
 
             {phase === "ai-complete" && (
               <motion.div
@@ -249,29 +249,6 @@ export function LoadingAnimation({ onComplete }: LoadingAnimationProps) {
           {getStatusText(phase)}
         </p>
       </div>
-    </div>
-  )
-}
-
-function MagnifyingGlass() {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      <div className="relative animate-bounce" style={{ animationDuration: "1.5s" }}>
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="drop-shadow-lg">
-          <circle cx="20" cy="20" r="12" stroke="hsl(160, 55%, 42%)" strokeWidth="3" fill="hsl(160, 55%, 42%)" fillOpacity="0.08" />
-          <path d="M14 14C16 12 19 11 20 11" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
-          <line x1="29" y1="29" x2="40" y2="40" stroke="hsl(160, 55%, 42%)" strokeWidth="3.5" strokeLinecap="round" />
-        </svg>
-        <div className="absolute top-2 left-2 w-9 h-9 overflow-hidden rounded-full">
-          <div className="w-full h-0.5 bg-[hsl(174,60%,45%)]/50" style={{ animation: "scanLine 1.5s ease-in-out infinite" }} />
-        </div>
-      </div>
-      <style jsx>{`
-        @keyframes scanLine {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(32px); }
-        }
-      `}</style>
     </div>
   )
 }

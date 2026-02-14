@@ -24,7 +24,7 @@ export function AnalyzingAnimation({ onComplete }: AnalyzingAnimationProps) {
         if (prev < steps.length - 1) return prev + 1
         return prev
       })
-    }, 1800)
+    }, 1500)
     return () => clearInterval(interval)
   }, [])
 
@@ -32,13 +32,13 @@ export function AnalyzingAnimation({ onComplete }: AnalyzingAnimationProps) {
     if (currentStep === steps.length - 1) {
       const timeout = setTimeout(() => {
         onComplete?.()
-      }, 2200)
+      }, 2000)
       return () => clearTimeout(timeout)
     }
   }, [currentStep, onComplete])
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+    <div className="flex flex-col items-center justify-center text-center">
       {/* Floating Document with scan effect */}
       <div className="relative w-48 h-48 mb-10">
         {/* Background glow */}

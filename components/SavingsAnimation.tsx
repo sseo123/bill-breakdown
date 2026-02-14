@@ -34,7 +34,7 @@ export function SavingsAnimation({ onComplete }: SavingsAnimationProps) {
   }, [onComplete])
 
   return (
-    <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+    <div className="flex flex-col items-center justify-center text-center">
       {/* Large leaf circle */}
       <div className="relative mb-8">
         {/* Outer pulse rings */}
@@ -201,7 +201,7 @@ export function SavingsAnimation({ onComplete }: SavingsAnimationProps) {
       </motion.div>
 
       {/* Progress dots */}
-      <div className="flex items-center gap-2 mt-8">
+      <div className="flex items-center gap-2 mt-10">
         {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
