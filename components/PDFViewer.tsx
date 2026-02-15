@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 
@@ -21,6 +21,8 @@ interface PDFViewerProps {
   activeTab: "errors" | "savings";
   currentPage: number;
   onPageChange: (page: number) => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 // Lazy-load react-pdf only when we need it (avoids canvas SSR issues)
@@ -45,14 +47,24 @@ export function PDFViewer({
   activeTab,
   currentPage,
   onPageChange,
+  isFullscreen = false,
+  onToggleFullscreen,
 }: PDFViewerProps) {
   const [numPages, setNumPages] = useState(0);
-  const [pageWidth, setPageWidth] = useState(0);
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
+  const [pdfPageSize, setPdfPageSize] = useState<{ width: number; height: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const onDocumentLoadSuccess = useCallback(
     ({ numPages: n }: { numPages: number }) => {
       setNumPages(n);
+    },
+    []
+  );
+
+  const onPageLoadSuccess = useCallback(
+    ({ originalWidth, originalHeight }: { originalWidth: number; originalHeight: number }) => {
+      setPdfPageSize({ width: originalWidth, height: originalHeight });
     },
     []
   );
@@ -67,17 +79,71 @@ export function PDFViewer({
     if (node) {
       containerRef.current = node;
       const rect = node.getBoundingClientRect();
-      setPageWidth(Math.min(rect.width - 32, 700)); // Default max width constraint
+      setContainerSize({ width: rect.width, height: rect.height });
     }
-  }, []);
+  }, [isFullscreen]); // Re-measure when fullscreen changes
+
+  // Calculate the optimal width for the PDF page
+  const getRenderedWidth = () => {
+    if (!containerSize) return 600;
+
+    // Default calculations
+    const defaultWidth = Math.min(containerSize.width - 32, 700);
+
+    if (!isFullscreen || !pdfPageSize) {
+      return defaultWidth;
+    }
+
+    // Fullscreen "Fit to Screen" logic
+    // Available space:
+    // Width: Container width - horizontal padding (e.g. 32px or more if centered)
+    // Height: Container height - vertical padding (32px top + 32px bottom) - Nav Bar (~60px)
+    const paddingX = 32; // ample horizontal padding
+    const paddingY = 40; // top/bottom padding 
+    const navBarHeight = 50;
+
+    const availableWidth = containerSize.width - paddingX;
+    const availableHeight = containerSize.height - paddingY - navBarHeight;
+
+    if (availableWidth <= 0 || availableHeight <= 0) return defaultWidth;
+
+    const scaleWidth = availableWidth / pdfPageSize.width;
+    const scaleHeight = availableHeight / pdfPageSize.height;
+
+    // Use the smaller scale to ensure it fits both dimensions
+    const scale = Math.min(scaleWidth, scaleHeight);
+
+    return pdfPageSize.width * scale;
+  };
+
+  const renderedWidth = getRenderedWidth();
 
   return (
     <div
       ref={measuredRef}
-      className="relative flex flex-col items-center rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-sm"
+      className={`relative flex flex-col items-center border-slate-100 bg-white overflow-hidden shadow-sm
+        ${isFullscreen ? "w-full h-full rounded-3xl border-0" : "rounded-2xl border"}
+      `}
     >
       {/* PDF / Mock Bill Render Area */}
-      <div className="relative w-full flex justify-center bg-[#f4fbf9] py-8 min-h-[320px]">
+      <div
+        className={`relative w-full flex justify-center bg-[#f4fbf9] items-center ${isFullscreen ? "flex-1 overflow-hidden" : "min-h-[320px] py-8"}`}
+      >
+        {/* Toggle Fullscreen Button */}
+        {onToggleFullscreen && (
+          <button
+            onClick={onToggleFullscreen}
+            className="absolute top-4 right-4 z-20 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:bg-white text-slate-600 transition-all hover:scale-105 border border-slate-200/50"
+            title={isFullscreen ? "Exit Fullscreen" : "Expand View"}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="w-5 h-5" />
+            ) : (
+              <Maximize2 className="w-5 h-5" />
+            )}
+          </button>
+        )}
+
         {fileUrl ? (
           <PDFDocument
             file={fileUrl}
@@ -98,13 +164,14 @@ export function PDFViewer({
                 We wrap the Page + Pins in a relative div with the exact same width 
                 so percentage-based pins (left: X%, top: Y%) track the PDF page, not the outer container.
             */}
-            <div className="relative" style={{ width: pageWidth || 600 }}>
+            <div className="relative shadow-2xl shadow-slate-200/50 transition-all duration-300" style={{ width: renderedWidth }}>
               <PDFPage
                 pageNumber={currentPage}
-                width={pageWidth || 600}
+                width={renderedWidth}
+                onLoadSuccess={onPageLoadSuccess}
                 renderTextLayer={false}
                 renderAnnotationLayer={false}
-                className="shadow-2xl shadow-slate-200/50"
+                className="block"
               />
               <PinsOverlay
                 pins={visiblePins}
@@ -128,7 +195,7 @@ export function PDFViewer({
 
       {/* Page Navigation */}
       {(numPages > 1 || !fileUrl) && (
-        <div className="w-full flex items-center justify-center gap-4 py-3 border-t border-slate-100 bg-white">
+        <div className="w-full flex items-center justify-center gap-4 py-3 border-t border-slate-100 bg-white flex-shrink-0">
           <button
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage <= 1}
