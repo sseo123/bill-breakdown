@@ -148,14 +148,14 @@ export default function BillAnalyzer() {
     }
   }
 
-const handleGenerate = async () => {
+  const handleGenerate = async () => {
     if (!pendingFile) return
 
     setView("ANALYZING")
     setLoadingPhase("drag-drop")
-    
+
     // We use the runAnalysis helper you already wrote
-    runAnalysis(pendingFile) 
+    runAnalysis(pendingFile)
   }
 
   // 2. Combined and Cleaned useEffect (removed the duplicate)
@@ -179,9 +179,8 @@ const handleGenerate = async () => {
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
-            className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 rounded-lg px-4 py-2 shadow-lg text-white ${
-              toast.type === "ok" ? "bg-black" : "bg-red-600"
-            }`}
+            className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 rounded-lg px-4 py-2 shadow-lg text-white ${toast.type === "ok" ? "bg-black" : "bg-red-600"
+              }`}
           >
             {toast.msg}
           </motion.div>
@@ -226,19 +225,17 @@ const handleGenerate = async () => {
                 {!pendingFile ? (
                   <div
                     {...getRootProps()}
-                    className={`group flex-1 border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-200 cursor-pointer flex flex-col items-center justify-center ${
-                      isDragActive
-                        ? "border-primary bg-primary/10 scale-[0.99]"
-                        : "border-card-border hover:border-primary hover:bg-primary/5"
-                    }`}
+                    className={`group flex-1 border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-200 cursor-pointer flex flex-col items-center justify-center ${isDragActive
+                      ? "border-primary bg-primary/10 scale-[0.99]"
+                      : "border-card-border hover:border-primary hover:bg-primary/5"
+                      }`}
                   >
                     <input {...getInputProps()} />
                     <div
-                      className={`mb-4 transition-colors duration-200 ${
-                        isDragActive
-                          ? "text-primary"
-                          : "text-muted-foreground/60 group-hover:text-primary"
-                      }`}
+                      className={`mb-4 transition-colors duration-200 ${isDragActive
+                        ? "text-primary"
+                        : "text-muted-foreground/60 group-hover:text-primary"
+                        }`}
                     >
                       <FileText className="w-12 h-12" />
                     </div>
@@ -291,11 +288,10 @@ const handleGenerate = async () => {
               <button
                 onClick={handleGenerate}
                 disabled={!pendingFile}
-                className={`w-full py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all shadow-lg ${
-                  pendingFile
-                    ? "bg-gradient-to-r from-primary to-accent text-white hover:scale-[1.02] active:scale-[0.98]"
-                    : "bg-card-border/50 text-muted-foreground/50 cursor-not-allowed shadow-none border border-card-border"
-                }`}
+                className={`w-full py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all shadow-lg ${pendingFile
+                  ? "bg-gradient-to-r from-primary to-accent text-white hover:scale-[1.02] active:scale-[0.98]"
+                  : "bg-card-border/50 text-muted-foreground/50 cursor-not-allowed shadow-none border border-card-border"
+                  }`}
               >
                 <Zap className={pendingFile ? "fill-white" : ""} />
                 Generate Audit
@@ -352,25 +348,25 @@ const handleGenerate = async () => {
                   <AnalyzingAnimation onComplete={() => setLoadingPhase("savings")} />
                 </motion.div>
               )}
-{loadingPhase === "savings" && (
-  <motion.div
-    key="phase3"
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    exit={{ opacity: 0, scale: 1.05 }}
-    transition={{ duration: 0.5 }}
-    className="w-full max-w-4xl p-10 py-20 bg-white shadow-2xl rounded-[3rem] border border-slate-100 flex flex-col items-center justify-center overflow-hidden"
-  >
-    {/* Pass the state setter directly to onComplete */}
-    <SavingsAnimation onComplete={() => setAnimationFinished(true)} />
-    
-    <div className="px-8 pb-8 -mt-2 text-center">
-      <p className="text-sm text-muted-foreground">
-        {loading ? "Finalizing insights…" : "Almost done…"}
-      </p>
-    </div>
-  </motion.div>
-)}
+              {loadingPhase === "savings" && (
+                <motion.div
+                  key="phase3"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.05 }}
+                  transition={{ duration: 0.5 }}
+                  className="w-full max-w-4xl p-10 py-20 bg-white shadow-2xl rounded-[3rem] border border-slate-100 flex flex-col items-center justify-center overflow-hidden"
+                >
+                  {/* Pass the state setter directly to onComplete */}
+                  <SavingsAnimation onComplete={() => setAnimationFinished(true)} />
+
+                  <div className="px-8 pb-8 -mt-2 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      {loading ? "Finalizing insights…" : "Almost done…"}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
             </AnimatePresence>
           )}
           {/* ===================== RESULT ===================== */}
@@ -381,38 +377,60 @@ const handleGenerate = async () => {
                 providerEmail: "customer.service@provider.com",
                 summary: {
                   totalErrors: data.errorAnalysis?.suspectedIssues?.length ?? 0,
-                  totalPotentialSavings: data.regionalComparison?.estimatedAnnualSavings 
-                    ? `$${data.regionalComparison.estimatedAnnualSavings.toLocaleString()}/yr` 
+                  totalPotentialSavings: data.regionalComparison?.estimatedAnnualSavings
+                    ? `$${data.regionalComparison.estimatedAnnualSavings.toLocaleString()}/yr`
                     : "$2,814/yr",
-                  totalCO2Reduction: data.regionalComparison?.annualCO2ReductionTons 
-                    ? `${data.regionalComparison.annualCO2ReductionTons} tons/yr` 
+                  totalCO2Reduction: data.regionalComparison?.annualCO2ReductionTons
+                    ? `${data.regionalComparison.annualCO2ReductionTons} tons/yr`
                     : "6.5 tons/yr",
-                  comparedToAverage: data.regionalComparison?.comparisonStatement || 
-                    (data.regionalComparison?.comparison === "above" 
-                      ? "Above average for Northern California" 
+                  comparedToAverage: data.regionalComparison?.comparisonStatement ||
+                    (data.regionalComparison?.comparison === "above"
+                      ? "Above average for Northern California"
                       : "About average for Northern California"),
                 },
-                errors: (data.errorAnalysis?.suspectedIssues ?? []).map((issue, i) => ({
-                  id: i + 1,
-                  title: issue.issue,
-                  description: issue.evidence,
-                  amount: issue.amount ? `$${issue.amount}` : undefined,
-                  severity: "high",
-                  pageNumber: issue.pageNumber || 1,
-                  pinX: issue.pinX,
-                  pinY: issue.pinY,
-                })),
-                savings: (data.savingsTips ?? []).map((tip, i) => ({
-                  id: i + 1,
-                  title: tip.title || "Energy Saving Tip",
-                  description: tip.action || tip.whyItFits || "",
-                  estimatedSaving: tip.estimatedMonthlySavings ? `$${tip.estimatedMonthlySavings}/mo` : "$47/mo",
-                  ecoImpact: "Reduces CO2 emissions",
-                  category: "energy",
-                  pageNumber: tip.pageNumber || 1,
-                  pinX: tip.pinX,
-                  pinY: tip.pinY,
-                }))
+                errors: (data.errorAnalysis?.suspectedIssues ?? [])
+                  .slice()
+                  .sort((a, b) => {
+                    if ((a.pageNumber || 1) !== (b.pageNumber || 1)) return (a.pageNumber || 1) - (b.pageNumber || 1);
+                    const aY = a.pinY ?? 0;
+                    const bY = b.pinY ?? 0;
+                    if (aY !== bY) return aY - bY;
+                    const aX = a.pinX ?? 0;
+                    const bX = b.pinX ?? 0;
+                    return aX - bX;
+                  })
+                  .map((issue, i) => ({
+                    id: i + 1,
+                    title: issue.issue,
+                    description: issue.evidence,
+                    amount: issue.amount ? `$${issue.amount}` : undefined,
+                    severity: "high",
+                    pageNumber: issue.pageNumber || 1,
+                    pinX: Number.isFinite(issue.pinX) ? issue.pinX : 50,
+                    pinY: Number.isFinite(issue.pinY) ? issue.pinY : 50,
+                  })),
+                savings: (data.savingsTips ?? [])
+                  .slice()
+                  .sort((a, b) => {
+                    if ((a.pageNumber || 1) !== (b.pageNumber || 1)) return (a.pageNumber || 1) - (b.pageNumber || 1);
+                    const aY = a.pinY ?? 0;
+                    const bY = b.pinY ?? 0;
+                    if (aY !== bY) return aY - bY;
+                    const aX = a.pinX ?? 0;
+                    const bX = b.pinX ?? 0;
+                    return aX - bX;
+                  })
+                  .map((tip, i) => ({
+                    id: i + 1,
+                    title: tip.title || "Energy Saving Tip",
+                    description: tip.action || tip.whyItFits || "",
+                    estimatedSaving: tip.estimatedMonthlySavings ? `$${tip.estimatedMonthlySavings}/mo` : "$47/mo",
+                    ecoImpact: "Reduces CO2 emissions",
+                    category: "energy",
+                    pageNumber: tip.pageNumber || 1,
+                    pinX: Number.isFinite(tip.pinX) ? tip.pinX : 50,
+                    pinY: Number.isFinite(tip.pinY) ? tip.pinY : 50,
+                  }))
               } as BillAnalysis}
               fileUrl={pendingFile ? URL.createObjectURL(pendingFile) : ""}
               onNewAnalysis={resetAll}
@@ -437,7 +455,7 @@ const handleGenerate = async () => {
                   New Analysis
                 </button>
               </div>
-              
+
               {!data ? (
                 <div className="rounded-2xl border p-6 bg-white">
                   <p className="text-muted-foreground">No result data.</p>
@@ -475,8 +493,8 @@ function ComparisonBadge({ value }: { value?: string }) {
     v === "above"
       ? "bg-red-600 text-white"
       : v === "below"
-      ? "bg-emerald-600 text-white"
-      : "bg-gray-200 text-gray-800"
+        ? "bg-emerald-600 text-white"
+        : "bg-gray-200 text-gray-800"
 
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>

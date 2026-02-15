@@ -225,9 +225,8 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
   }
 }
 
-export async function analyzeBill(base64File: string, fileType: string)
-{
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
+export async function analyzeBill(base64File: string, fileType: string) {
+  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" })
 
   const base64 = base64File.includes(",") ? base64File.split(",")[1] : base64File
 
@@ -282,7 +281,7 @@ RULES:
 - savingsTips MUST be based on billType and the regionalComparison outcome (if above average, focus on reducing the main driver).
 - savingsTips must contain 3 to 5 items.
 - Output ONLY the JSON. No markdown. No commentary.
-- IMPORTANT: For each issue and savings tip, specify the page number (1-indexed) and the (pinX, pinY) coordinates as percentages (0-100) of where the item is located on the bill image/PDF.
+- IMPORTANT: For the (pinX, pinY) coordinates, choose a location in the **WHITESPACE** or **MARGIN** near the relevant text. Do NOT place the pin directly on top of the text; offset it slightly so the numbered circle does not cover any letters or numbers.
 `
 
 
@@ -371,7 +370,7 @@ function extractJsonObject2(text: string) {
 }
 
 export async function extractBillMetrics(base64File: string, fileType: string) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
+  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" })
   const base64 = base64File.includes(",") ? base64File.split(",")[1] : base64File
 
   const prompt = `

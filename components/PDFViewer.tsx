@@ -67,7 +67,7 @@ export function PDFViewer({
     if (node) {
       containerRef.current = node;
       const rect = node.getBoundingClientRect();
-      setPageWidth(Math.min(rect.width - 32, 700));
+      setPageWidth(Math.min(rect.width - 32, 700)); // Default max width constraint
     }
   }, []);
 
@@ -93,63 +93,37 @@ export function PDFViewer({
               </div>
             }
           >
-            <PDFPage
-              pageNumber={currentPage}
-              width={pageWidth || 600}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-              className="shadow-2xl shadow-slate-200/50"
-            />
+            {/* 
+                CRITICAL FIX: 
+                We wrap the Page + Pins in a relative div with the exact same width 
+                so percentage-based pins (left: X%, top: Y%) track the PDF page, not the outer container.
+            */}
+            <div className="relative" style={{ width: pageWidth || 600 }}>
+              <PDFPage
+                pageNumber={currentPage}
+                width={pageWidth || 600}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                className="shadow-2xl shadow-slate-200/50"
+              />
+              <PinsOverlay
+                pins={visiblePins}
+                activePin={activePin}
+                onPinClick={onPinClick}
+              />
+            </div>
           </PDFDocument>
         ) : (
-          <MockBillPreview />
+          /* Mock Bill Case */
+          <div className="relative w-[600px] max-w-full">
+            <MockBillPreview />
+            <PinsOverlay
+              pins={visiblePins}
+              activePin={activePin}
+              onPinClick={onPinClick}
+            />
+          </div>
         )}
-
-        {/* Annotation Pins */}
-        <AnimatePresence mode="popLayout">
-          {visiblePins.map((pin) => {
-            const isActive = activePin === pin.id;
-            const isError = pin.type === "error";
-            return (
-              <motion.button
-                key={`${pin.type}-${pin.id}`}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                onClick={() => onPinClick(pin.id)}
-                className={`absolute z-10 flex items-center justify-center rounded-full text-[10px] font-bold cursor-pointer transition-all duration-300 shadow-lg
-                  ${isActive ? "w-7 h-7 ring-[3px]" : "w-5.5 h-5.5"}
-                  ${
-                    isError
-                      ? `bg-red-500 text-white ${isActive ? "ring-red-200 scale-110" : ""}`
-                      : `bg-[#2D8F66] text-white ${isActive ? "ring-emerald-200 scale-110" : ""}`
-                  }
-                `}
-                style={{
-                  left: `${Math.max(3, Math.min(97, pin.pinX))}%`,
-                  top: `${Math.max(3, Math.min(97, pin.pinY))}%`,
-                  transform: "translate(-50%, -50%)",
-                }}
-                aria-label={`${isError ? "Error" : "Saving"} #${pin.id}`}
-              >
-                {pin.id}
-                {isActive && (
-                  <motion.span
-                    className={`absolute inset-0 rounded-full ${isError ? "bg-red-400" : "bg-emerald-400"}`}
-                    initial={{ scale: 1, opacity: 0.6 }}
-                    animate={{ scale: 1.8, opacity: 0 }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 1.5,
-                      ease: "easeOut",
-                    }}
-                  />
-                )}
-              </motion.button>
-            );
-          })}
-        </AnimatePresence>
       </div>
 
       {/* Page Navigation */}
@@ -177,6 +151,62 @@ export function PDFViewer({
         </div>
       )}
     </div>
+  );
+}
+
+function PinsOverlay({
+  pins,
+  activePin,
+  onPinClick
+}: {
+  pins: Pin[],
+  activePin: number | null,
+  onPinClick: (id: number) => void
+}) {
+  return (
+    <AnimatePresence mode="popLayout">
+      {pins.map((pin) => {
+        const isActive = activePin === pin.id;
+        const isError = pin.type === "error";
+        return (
+          <motion.button
+            key={`${pin.type}-${pin.id}`}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            onClick={() => onPinClick(pin.id)}
+            className={`absolute z-10 flex items-center justify-center rounded-full text-[10px] font-bold cursor-pointer transition-all duration-300 shadow-lg
+              ${isActive ? "w-7 h-7 ring-[3px]" : "w-5.5 h-5.5"}
+              ${isError
+                ? `bg-red-500 text-white ${isActive ? "ring-red-200 scale-110" : ""}`
+                : `bg-[#2D8F66] text-white ${isActive ? "ring-emerald-200 scale-110" : ""}`
+              }
+            `}
+            style={{
+              left: `${Math.max(3, Math.min(97, pin.pinX))}%`,
+              top: `${Math.max(3, Math.min(97, pin.pinY))}%`,
+              transform: "translate(-50%, -50%)",
+            }}
+            aria-label={`${isError ? "Error" : "Saving"} #${pin.id}`}
+          >
+            {pin.id}
+            {isActive && (
+              <motion.span
+                className={`absolute inset-0 rounded-full ${isError ? "bg-red-400" : "bg-emerald-400"}`}
+                initial={{ scale: 1, opacity: 0.6 }}
+                animate={{ scale: 1.8, opacity: 0 }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 1.5,
+                  ease: "easeOut",
+                }}
+              />
+            )}
+          </motion.button>
+        );
+      })}
+    </AnimatePresence>
   );
 }
 
