@@ -5,11 +5,12 @@ import { useDropzone } from "react-dropzone"
 import { motion, AnimatePresence } from "framer-motion"
 import { FileText, X, Zap, Copy, AlertTriangle } from "lucide-react"
 
-import { analyzeBill } from "./actions"
+import { analyzeBill, BillAnalysis } from "./actions"
 
 import { LoadingAnimation } from "@/components/loading-animation"
 import { AnalyzingAnimation } from "@/components/AnalyzingAnimation"
 import { SavingsAnimation } from "@/components/SavingsAnimation"
+import { ResultsPage } from "@/components/ResultsPage"
 
 type AppState = "UPLOAD" | "ANALYZING" | "RESULT"
 type LoadingPhase = "drag-drop" | "scanning" | "savings"
@@ -22,6 +23,14 @@ type ParsedData = {
   errorAnalysis?: {
     likelihoodPct?: number
     reasons?: string[]
+    suspectedIssues?: Array<{
+      issue: string
+      evidence: string
+      amount: number | null
+      pageNumber: number
+      pinX: number
+      pinY: number
+    }>
   }
 
   mockEmail?: string
@@ -31,6 +40,9 @@ type ParsedData = {
     action?: string
     whyItFits?: string
     estimatedMonthlySavings?: number
+    pageNumber?: number
+    pinX?: number
+    pinY?: number
   }>
 
   regionalComparison?: {
@@ -39,6 +51,9 @@ type ParsedData = {
     comparison?: "above" | "below" | "about_average" | string
     estimatedAverageRange?: string
     explanation?: string
+    estimatedAnnualSavings?: number | null
+    annualCO2ReductionTons?: number | null
+    comparisonStatement?: string
   }
 }
 
@@ -156,7 +171,7 @@ const handleGenerate = async () => {
   }, [view, animationFinished, loading]);
 
   return (
-    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6 font-sans text-foreground">
+    <main className={`min-h-screen bg-background flex flex-col items-center p-6 font-sans text-foreground ${view !== "RESULT" ? "justify-center" : "pt-0 px-0 pb-0"}`}>
       {/* Toast */}
       <AnimatePresence>
         {toast && (
@@ -175,7 +190,7 @@ const handleGenerate = async () => {
 
       {/* Header - hidden during loading */}
       <AnimatePresence>
-        {view !== "ANALYZING" && (
+        {view === "UPLOAD" && (
           <motion.div
             initial={{ opacity: 0, y: -14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -358,11 +373,56 @@ const handleGenerate = async () => {
 )}
             </AnimatePresence>
           )}
-
           {/* ===================== RESULT ===================== */}
-          {view === "RESULT" && (
+          {view === "RESULT" && data && !data.error && !data.parseError && (
+            <ResultsPage
+              analysis={{
+                providerName: data.regionalComparison?.billType === "electric" ? "Pacific Gas & Electric" : "Utility Provider",
+                providerEmail: "customer.service@provider.com",
+                summary: {
+                  totalErrors: data.errorAnalysis?.suspectedIssues?.length ?? 0,
+                  totalPotentialSavings: data.regionalComparison?.estimatedAnnualSavings 
+                    ? `$${data.regionalComparison.estimatedAnnualSavings.toLocaleString()}/yr` 
+                    : "$2,814/yr",
+                  totalCO2Reduction: data.regionalComparison?.annualCO2ReductionTons 
+                    ? `${data.regionalComparison.annualCO2ReductionTons} tons/yr` 
+                    : "6.5 tons/yr",
+                  comparedToAverage: data.regionalComparison?.comparisonStatement || 
+                    (data.regionalComparison?.comparison === "above" 
+                      ? "Above average for Northern California" 
+                      : "About average for Northern California"),
+                },
+                errors: (data.errorAnalysis?.suspectedIssues ?? []).map((issue, i) => ({
+                  id: i + 1,
+                  title: issue.issue,
+                  description: issue.evidence,
+                  amount: issue.amount ? `$${issue.amount}` : undefined,
+                  severity: "high",
+                  pageNumber: issue.pageNumber || 1,
+                  pinX: issue.pinX,
+                  pinY: issue.pinY,
+                })),
+                savings: (data.savingsTips ?? []).map((tip, i) => ({
+                  id: i + 1,
+                  title: tip.title || "Energy Saving Tip",
+                  description: tip.action || tip.whyItFits || "",
+                  estimatedSaving: tip.estimatedMonthlySavings ? `$${tip.estimatedMonthlySavings}/mo` : "$47/mo",
+                  ecoImpact: "Reduces CO2 emissions",
+                  category: "energy",
+                  pageNumber: tip.pageNumber || 1,
+                  pinX: tip.pinX,
+                  pinY: tip.pinY,
+                }))
+              } as BillAnalysis}
+              fileUrl={pendingFile ? URL.createObjectURL(pendingFile) : ""}
+              onNewAnalysis={resetAll}
+            />
+          )}
+
+          {/* Standard fallbacks for errors/parsing issues */}
+          {view === "RESULT" && (!data || data.error || data.parseError) && (
             <motion.div
-              key="result"
+              key="result-fallback"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               className="w-full max-w-7xl p-10 bg-white shadow-xl rounded-[2rem] border border-slate-100 flex flex-col gap-6"
@@ -372,50 +432,12 @@ const handleGenerate = async () => {
                   <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
                     <Zap className="w-5 h-5 text-primary" fill="hsl(var(--primary))" /> Audit Results
                   </h2>
-
-                  {suspicious && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-600 text-white px-2.5 py-1 text-xs font-semibold">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      suspicious
-                    </span>
-                  )}
                 </div>
-
                 <button onClick={resetAll} className="text-accent font-semibold text-sm hover:underline">
                   New Analysis
                 </button>
               </div>
-
-              {/* Tabs */}
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setActiveTab(1)}
-                    className={`px-4 py-2 rounded-lg font-semibold border transition-colors ${
-                      activeTab === 1 ? "bg-slate-900 text-white" : "bg-white"
-                    }`}
-                  >
-                    Error Audit
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab(2)}
-                    className={`px-4 py-2 rounded-lg font-semibold border transition-colors ${
-                      activeTab === 2 ? "bg-slate-900 text-white" : "bg-white"
-                    }`}
-                  >
-                    Savings & Comparison
-                  </button>
-                </div>
-
-                {pendingFile && (
-                  <div className="text-xs text-muted-foreground truncate max-w-[45%] text-right">
-                    File: <span className="font-semibold text-foreground">{pendingFile.name}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Content */}
+              
               {!data ? (
                 <div className="rounded-2xl border p-6 bg-white">
                   <p className="text-muted-foreground">No result data.</p>
@@ -425,118 +447,10 @@ const handleGenerate = async () => {
                   <p className="font-bold text-red-700">Analysis failed</p>
                   <p className="mt-2 text-sm text-red-700 whitespace-pre-wrap">{data.error}</p>
                 </div>
-              ) : data.parseError ? (
+              ) : (
                 <div className="rounded-2xl border border-amber-300 bg-amber-50 p-6">
                   <p className="font-bold text-amber-800">Couldn’t parse JSON response</p>
                   <p className="mt-2 text-sm text-amber-800 whitespace-pre-wrap">{data.raw}</p>
-                </div>
-              ) : activeTab === 1 ? (
-                <div
-                  className={`p-6 rounded-2xl border shadow-sm ${
-                    suspicious ? "bg-red-50 border-red-400" : "bg-white border-slate-200"
-                  }`}
-                >
-                  <h3 className="text-lg font-bold mb-3 text-foreground">Error Audit</h3>
-
-                  <p className="text-base text-foreground">
-                    Error Probability: <span className="font-extrabold">{likelihoodPct}%</span>
-                    {suspicious && <span className="ml-2 text-red-600 font-semibold">⚠ suspicious</span>}
-                  </p>
-
-                  {Array.isArray(data.errorAnalysis?.reasons) && data.errorAnalysis!.reasons!.length > 0 && (
-                    <ul className="mt-4 list-disc pl-6 text-foreground/90">
-                      {data.errorAnalysis!.reasons!.map((r, i) => (
-                        <li key={i} className="mb-2">
-                          {r}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  {data.mockEmail && (
-                    <div className="mt-6 border-t pt-5">
-                      <div className="flex items-center justify-between gap-3">
-                        <h4 className="text-base font-bold text-foreground">Draft Email</h4>
-
-                        <button
-                          onClick={() => handleCopy(data.mockEmail!)}
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-slate-900 text-white font-semibold hover:bg-slate-800"
-                        >
-                          <Copy className="w-4 h-4" />
-                          Copy Email
-                        </button>
-                      </div>
-
-                      <pre className="mt-3 whitespace-pre-wrap bg-slate-50 p-4 rounded-xl text-sm border">
-                        {data.mockEmail}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div
-                  className={`p-6 rounded-2xl border shadow-sm ${
-                    data.regionalComparison?.comparison === "above"
-                      ? "bg-yellow-50 border-yellow-300"
-                      : "bg-white border-slate-200"
-                  }`}
-                >
-                  <h3 className="text-lg font-bold mb-3 text-foreground">Sustainable Savings</h3>
-
-                  <div className="space-y-3">
-                    {sortedTips.length > 0 ? (
-                      sortedTips.map((tip: any, i: number) => (
-                        <div key={i} className="p-4 rounded-xl bg-slate-50 border">
-                          <div className="font-bold text-foreground">{tip.title ?? `Tip ${i + 1}`}</div>
-                          {tip.action && <div className="text-foreground/90 mt-1">{tip.action}</div>}
-
-                          {tip.estimatedMonthlySavings != null && (
-                            <div className="mt-2 text-emerald-700 font-semibold">
-                              Est. Save: ${tip.estimatedMonthlySavings}/month
-                            </div>
-                          )}
-
-                          {tip.whyItFits && (
-                            <div className="mt-1 text-sm text-muted-foreground">{tip.whyItFits}</div>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-4 rounded-xl bg-slate-50 border text-muted-foreground">
-                        No savings tips found.
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-6 border-t pt-5">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-base font-bold text-foreground">Regional Comparison</h4>
-                      <ComparisonBadge value={data.regionalComparison?.comparison} />
-                    </div>
-
-                    <div className="mt-3 space-y-1 text-foreground/90">
-                      <p>
-                        Bill Type:{" "}
-                        <span className="font-semibold">
-                          {data.regionalComparison?.billType ?? "unknown"}
-                        </span>
-                      </p>
-                      <p>
-                        Total Amount:{" "}
-                        <span className="font-semibold">
-                          {data.regionalComparison?.totalAmount != null
-                            ? `$${data.regionalComparison.totalAmount}`
-                            : "Unknown"}
-                        </span>
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Avg Range: {data.regionalComparison?.estimatedAverageRange ?? "Unknown"}
-                      </p>
-                      {data.regionalComparison?.explanation && (
-                        <p className="mt-2 text-foreground/90">{data.regionalComparison.explanation}</p>
-                      )}
-                    </div>
-                  </div>
                 </div>
               )}
             </motion.div>

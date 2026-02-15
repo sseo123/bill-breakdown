@@ -17,6 +17,9 @@ export type BillAnalysisJson = {
       issue: string
       evidence: string
       amount: number | null
+      pageNumber: number
+      pinX: number // 0-100
+      pinY: number // 0-100
     }>
   }
   mockEmail: string | null
@@ -26,13 +29,52 @@ export type BillAnalysisJson = {
     comparison: Comparison
     estimatedAverageRange: string
     explanation: string
+    estimatedAnnualSavings: number | null
+    annualCO2ReductionTons: number | null
+    comparisonStatement: string
   }
   savingsTips: Array<{
     title: string
     action: string
     estimatedMonthlySavings: number | null
     whyItFits: string
+    pageNumber: number
+    pinX: number // 0-100
+    pinY: number // 0-100
   }>
+}
+
+export interface BillAnalysis {
+  providerName: string;
+  providerEmail: string;
+  providerPhone?: string;
+  summary: {
+    totalErrors: number;
+    totalPotentialSavings: string;
+    totalCO2Reduction: string;
+    comparedToAverage: string;
+  };
+  errors: Array<{
+    id: number;
+    title: string;
+    description: string;
+    amount?: string;
+    severity: "high" | "medium" | "low";
+    pageNumber: number;
+    pinX: number;
+    pinY: number;
+  }>;
+  savings: Array<{
+    id: number;
+    title: string;
+    description: string;
+    estimatedSaving: string;
+    ecoImpact: string;
+    category: "energy" | "water" | "other";
+    pageNumber: number;
+    pinX: number;
+    pinY: number;
+  }>;
 }
 
 function stripCodeFences(text: string) {
@@ -108,6 +150,9 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
       issue: String(x.issue ?? "").trim() || "Unspecified issue",
       evidence: String(x.evidence ?? "").trim() || "No evidence provided",
       amount: asNumberOrNull(x.amount),
+      pageNumber: Number(x.pageNumber ?? 1) || 1,
+      pinX: Number(x.pinX ?? 50),
+      pinY: Number(x.pinY ?? 50),
     }))
 
   const savingsTipsRaw = Array.isArray(raw?.savingsTips) ? raw.savingsTips : []
@@ -119,6 +164,9 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
       action: String(x.action ?? "").trim() || "",
       estimatedMonthlySavings: asNumberOrNull(x.estimatedMonthlySavings),
       whyItFits: String(x.whyItFits ?? "").trim() || "",
+      pageNumber: Number(x.pageNumber ?? 1) || 1,
+      pinX: Number(x.pinX ?? 50),
+      pinY: Number(x.pinY ?? 50),
     }))
     .filter((t: any) => t.action)
 
@@ -136,6 +184,11 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
   const explanation =
     String(regionalComparison?.explanation ?? "").trim() ||
     "No comparison explanation provided."
+  const estimatedAnnualSavings = asNumberOrNull(regionalComparison?.estimatedAnnualSavings)
+  const annualCO2ReductionTons = asNumberOrNull(regionalComparison?.annualCO2ReductionTons)
+  const comparisonStatement =
+    String(regionalComparison?.comparisonStatement ?? "").trim() ||
+    (comparison === "above" ? "Above average for your region" : "About average for your region")
 
   // mockEmail 규칙 보정: likelihood>=50 또는 suspectedIssues가 있으면 null이면 안 됨(최소 안내문)
   let mockEmail: string | null =
@@ -164,6 +217,9 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
       comparison,
       estimatedAverageRange,
       explanation,
+      estimatedAnnualSavings,
+      annualCO2ReductionTons,
+      comparisonStatement,
     },
     savingsTips,
   }
@@ -191,7 +247,10 @@ Return ONLY a valid JSON object matching EXACTLY the schema below (no extra keys
     "verdict": "low" | "medium" | "high",
     "reasons": string[],
     "suspectedIssues": [
-      { "issue": string, "evidence": string, "amount": number | null }
+      { 
+        "issue": string, "evidence": string, "amount": number | null,
+        "pageNumber": number, "pinX": number (0-100), "pinY": number (0-100)
+      }
     ]
   },
   "mockEmail": string | null,
@@ -200,10 +259,16 @@ Return ONLY a valid JSON object matching EXACTLY the schema below (no extra keys
     "totalAmount": number | null,
     "comparison": "below" | "about_average" | "above",
     "estimatedAverageRange": string,
-    "explanation": string
+    "explanation": string,
+    "estimatedAnnualSavings": number | null,
+    "annualCO2ReductionTons": number | null,
+    "comparisonStatement": string
   },
   "savingsTips": [
-    { "title": string, "action": string, "estimatedMonthlySavings": number | null, "whyItFits": string }
+    { 
+      "title": string, "action": string, "estimatedMonthlySavings": number | null, "whyItFits": string,
+      "pageNumber": number, "pinX": number (0-100), "pinY": number (0-100)
+    }
   ]
 }
 
@@ -211,9 +276,13 @@ RULES:
 - likelihoodPct is the probability (0-100) that this bill contains an error or suspicious charge based on what you can see.
 - If likelihoodPct >= 50 OR suspectedIssues has at least 1 item, mockEmail MUST be a complete dispute email. Otherwise null.
 - regionalComparison MUST be based on the ZIP code found on the bill. If ZIP is unknown, say it is an estimate and use a broad average range.
+- estimatedAnnualSavings is the TOTAL expected annual savings if ALL savingsTips are implemented.
+- annualCO2ReductionTons is the TOTAL expected annual CO2 reduction in tons (e.g. 6.5) if eco-friendly tips are followed.
+- comparisonStatement should be a VERY brief comparison (max 6 words) like "12% above Northern California average" or "About average for Miami".
 - savingsTips MUST be based on billType and the regionalComparison outcome (if above average, focus on reducing the main driver).
 - savingsTips must contain 3 to 5 items.
 - Output ONLY the JSON. No markdown. No commentary.
+- IMPORTANT: For each issue and savings tip, specify the page number (1-indexed) and the (pinX, pinY) coordinates as percentages (0-100) of where the item is located on the bill image/PDF.
 `
 
 
@@ -245,7 +314,10 @@ Return ONLY the JSON object with EXACTLY this structure (no extra keys):
     "verdict": "low" | "medium" | "high",
     "reasons": string[],
     "suspectedIssues": [
-      { "issue": string, "evidence": string, "amount": number | null }
+      { 
+        "issue": string, "evidence": string, "amount": number | null,
+        "pageNumber": number, "pinX": number (0-100), "pinY": number (0-100)
+      }
     ]
   },
   "mockEmail": string | null,
@@ -254,10 +326,16 @@ Return ONLY the JSON object with EXACTLY this structure (no extra keys):
     "totalAmount": number | null,
     "comparison": "below" | "about_average" | "above",
     "estimatedAverageRange": string,
-    "explanation": string
+    "explanation": string,
+    "estimatedAnnualSavings": number | null,
+    "annualCO2ReductionTons": number | null,
+    "comparisonStatement": string
   },
   "savingsTips": [
-    { "title": string, "action": string, "estimatedMonthlySavings": number | null, "whyItFits": string }
+    { 
+      "title": string, "action": string, "estimatedMonthlySavings": number | null, "whyItFits": string,
+      "pageNumber": number, "pinX": number (0-100), "pinY": number (0-100)
+    }
   ]
 }
 No markdown. No extra text.
