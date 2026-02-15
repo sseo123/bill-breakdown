@@ -46,6 +46,8 @@ type ParsedData = {
   }>
 
   regionalComparison?: {
+    providerName?: string | null
+    providerEmail?: string | null
     billType?: string
     totalAmount?: number
     comparison?: "above" | "below" | "about_average" | string
@@ -373,8 +375,8 @@ export default function BillAnalyzer() {
           {view === "RESULT" && data && !data.error && !data.parseError && (
             <ResultsPage
               analysis={{
-                providerName: data.regionalComparison?.billType === "electric" ? "Pacific Gas & Electric" : "Utility Provider",
-                providerEmail: "customer.service@provider.com",
+                providerName: data.regionalComparison?.providerName || (data.regionalComparison?.billType === "electric" ? "Electric Provider" : "Utility Provider"),
+                providerEmail: data.regionalComparison?.providerEmail || "customer.service@provider.com",
                 summary: {
                   totalErrors: data.errorAnalysis?.suspectedIssues?.length ?? 0,
                   totalPotentialSavings: data.regionalComparison?.estimatedAnnualSavings

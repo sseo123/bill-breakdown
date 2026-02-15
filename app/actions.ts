@@ -24,6 +24,8 @@ export type BillAnalysisJson = {
   }
   mockEmail: string | null
   regionalComparison: {
+    providerName: string | null
+    providerEmail: string | null
     billType: BillType
     totalAmount: number | null
     comparison: Comparison
@@ -176,6 +178,8 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
   const verdict = normalizeVerdict(errorAnalysis?.verdict)
   const reasons = ensureArrayStrings(errorAnalysis?.reasons).slice(0, 6)
 
+  const providerName = String(regionalComparison?.providerName ?? "").trim() || null
+  const providerEmail = String(regionalComparison?.providerEmail ?? "").trim() || null
   const billType = normalizeBillType(regionalComparison?.billType)
   const totalAmount = asNumberOrNull(regionalComparison?.totalAmount)
   const comparison = normalizeComparison(regionalComparison?.comparison)
@@ -212,6 +216,8 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
     },
     mockEmail,
     regionalComparison: {
+      providerName,
+      providerEmail,
       billType,
       totalAmount,
       comparison,
@@ -226,7 +232,7 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
 }
 
 export async function analyzeBill(base64File: string, fileType: string) {
-  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" })
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
   const base64 = base64File.includes(",") ? base64File.split(",")[1] : base64File
 
@@ -254,6 +260,8 @@ Return ONLY a valid JSON object matching EXACTLY the schema below (no extra keys
   },
   "mockEmail": string | null,
   "regionalComparison": {
+    "providerName": "Full name of the utility provider (e.g. Pacific Gas & Electric, Los Angeles Department of Water and Power)",
+    "providerEmail": "customer service email if found on bill, or null",
     "billType": "water" | "electric" | "gas" | "internet" | "unknown",
     "totalAmount": number | null,
     "comparison": "below" | "about_average" | "above",
@@ -321,6 +329,8 @@ Return ONLY the JSON object with EXACTLY this structure (no extra keys):
   },
   "mockEmail": string | null,
   "regionalComparison": {
+    "providerName": string | null,
+    "providerEmail": string | null,
     "billType": "water" | "electric" | "gas" | "internet" | "unknown",
     "totalAmount": number | null,
     "comparison": "below" | "about_average" | "above",
@@ -370,7 +380,7 @@ function extractJsonObject2(text: string) {
 }
 
 export async function extractBillMetrics(base64File: string, fileType: string) {
-  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" })
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
   const base64 = base64File.includes(",") ? base64File.split(",")[1] : base64File
 
   const prompt = `
