@@ -67,6 +67,7 @@ export default function BillAnalyzer() {
 
   const [data, setData] = useState<ParsedData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [apiDone, setApiDone] = useState(false)
 
   const [activeTab, setActiveTab] = useState<1 | 2>(1)
 
@@ -108,6 +109,7 @@ export default function BillAnalyzer() {
     setPendingFile(null)
     setData(null)
     setLoading(false)
+    setApiDone(false)
     setActiveTab(1)
     analysisDoneRef.current = false
     setAnimationFinished(false)
@@ -129,6 +131,7 @@ export default function BillAnalyzer() {
 
   const runAnalysis = async (file: File) => {
     setLoading(true)
+    setApiDone(false)
     setData(null)
     analysisDoneRef.current = false
 
@@ -146,6 +149,7 @@ export default function BillAnalyzer() {
       setData({ error: e?.message ? String(e.message) : "Unknown error" })
     } finally {
       analysisDoneRef.current = true
+      setApiDone(true)
       setLoading(false)
     }
   }
@@ -160,17 +164,14 @@ export default function BillAnalyzer() {
     runAnalysis(pendingFile)
   }
 
-  // 2. Combined and Cleaned useEffect (removed the duplicate)
+  // Transition to RESULT once BOTH the API is done AND the last animation has finished.
+  // Because animations fast-forward when apiDone fires, these two conditions converge quickly.
   useEffect(() => {
     if (view !== "ANALYZING") return;
-
-    // We only move to the result once BOTH are true:
-    // 1. The SavingsAnimation has finished its cycle (animationFinished)
-    // 2. The API call is done (analysisDoneRef.current)
-    if (animationFinished && analysisDoneRef.current) {
+    if (animationFinished && apiDone) {
       setView("RESULT");
     }
-  }, [view, animationFinished, loading]);
+  }, [view, animationFinished, apiDone]);
 
   return (
     <main className={`min-h-screen bg-background flex flex-col items-center p-6 font-sans text-foreground ${view !== "RESULT" ? "justify-center" : "pt-0 px-0 pb-0"}`}>
@@ -334,7 +335,7 @@ export default function BillAnalyzer() {
                     <p className="text-xs text-muted-foreground">Preparing document for AI analysis</p>
                   </div>
 
-                  <LoadingAnimation onComplete={() => setLoadingPhase("scanning")} />
+                  <LoadingAnimation onComplete={() => setLoadingPhase("scanning")} apiDone={apiDone} />
                 </motion.div>
               )}
 
@@ -347,7 +348,7 @@ export default function BillAnalyzer() {
                   transition={{ duration: 0.5 }}
                   className="w-full max-w-4xl p-10 py-20 bg-white shadow-2xl rounded-[3rem] border border-slate-100 flex flex-col items-center justify-center overflow-hidden"
                 >
-                  <AnalyzingAnimation onComplete={() => setLoadingPhase("savings")} />
+                  <AnalyzingAnimation onComplete={() => setLoadingPhase("savings")} apiDone={apiDone} />
                 </motion.div>
               )}
               {loadingPhase === "savings" && (
@@ -360,7 +361,7 @@ export default function BillAnalyzer() {
                   className="w-full max-w-4xl p-10 py-20 bg-white shadow-2xl rounded-[3rem] border border-slate-100 flex flex-col items-center justify-center overflow-hidden"
                 >
                   {/* Pass the state setter directly to onComplete */}
-                  <SavingsAnimation onComplete={() => setAnimationFinished(true)} />
+                  <SavingsAnimation onComplete={() => setAnimationFinished(true)} apiDone={apiDone} />
 
                   <div className="px-8 pb-8 -mt-2 text-center">
                     <p className="text-sm text-muted-foreground">

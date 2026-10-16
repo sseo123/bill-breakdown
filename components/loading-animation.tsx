@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 
 type AnimationPhase =
@@ -15,38 +15,57 @@ type AnimationPhase =
 
 interface LoadingAnimationProps {
   onComplete?: () => void
+  apiDone?: boolean
 }
 
-export function LoadingAnimation({ onComplete }: LoadingAnimationProps) {
+export function LoadingAnimation({ onComplete, apiDone }: LoadingAnimationProps) {
   const [phase, setPhase] = useState<AnimationPhase>("idle")
+  const activeTimeoutsRef = useRef<NodeJS.Timeout[]>([])
+  const completedRef = useRef(false)
+
+  const complete = useCallback(() => {
+    if (completedRef.current) return
+    completedRef.current = true
+    onComplete?.()
+  }, [onComplete])
 
   useEffect(() => {
-    const timings: { phase: AnimationPhase; delay: number }[] = [
-      { phase: "pdf-to-folder", delay: 1000 },
-      { phase: "pdf-entering-folder", delay: 1500 },
-      { phase: "folder-close", delay: 1000 },
-      { phase: "folder-to-ai", delay: 1500 },
-      { phase: "folder-entering-ai", delay: 1000 },
-      { phase: "ai-analyzing", delay: 1500 },
-      { phase: "ai-complete", delay: 1000 },
-    ]
-
     const timeouts: NodeJS.Timeout[] = []
-    let totalDelay = 0
-
-    timings.forEach(({ phase: p, delay }) => {
-      totalDelay += delay
-      const t = setTimeout(() => setPhase(p), totalDelay)
+    const schedule = (fn: () => void, delay: number) => {
+      const t = setTimeout(fn, delay)
       timeouts.push(t)
-    })
+    }
 
-    const doneTimeout = setTimeout(() => {
-      onComplete?.()
-    }, totalDelay + 600)
-    timeouts.push(doneTimeout)
+    activeTimeoutsRef.current = timeouts
+
+    if (apiDone) {
+      // API resolved — fast-forward to completion
+      if (completedRef.current) return
+      setPhase("ai-analyzing")
+      schedule(() => setPhase("ai-complete"), 400)
+      schedule(() => complete(), 800)
+    } else {
+      // Normal animation sequence
+      const timings: { phase: AnimationPhase; delay: number }[] = [
+        { phase: "pdf-to-folder", delay: 1000 },
+        { phase: "pdf-entering-folder", delay: 1500 },
+        { phase: "folder-close", delay: 1000 },
+        { phase: "folder-to-ai", delay: 1500 },
+        { phase: "folder-entering-ai", delay: 1000 },
+        { phase: "ai-analyzing", delay: 1500 },
+        { phase: "ai-complete", delay: 1000 },
+      ]
+
+      let totalDelay = 0
+      timings.forEach(({ phase: p, delay }) => {
+        totalDelay += delay
+        schedule(() => setPhase(p), totalDelay)
+      })
+      schedule(() => complete(), totalDelay + 600)
+    }
 
     return () => timeouts.forEach(clearTimeout)
-  }, [onComplete])
+  }, [apiDone, complete])
 
   return (
     <div className="relative flex items-center justify-center w-full max-w-3xl mx-auto h-[300px] select-none overflow-hidden">

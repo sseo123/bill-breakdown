@@ -1,10 +1,11 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 interface SavingsAnimationProps {
   onComplete?: () => void
+  apiDone?: boolean
 }
 
 const tips = [
@@ -13,28 +14,33 @@ const tips = [
   "Estimating carbon reduction potential...",
 ]
 
-export function SavingsAnimation({ onComplete }: SavingsAnimationProps) {
+export function SavingsAnimation({ onComplete, apiDone }: SavingsAnimationProps) {
   const [tipIndex, setTipIndex] = useState(0)
+  const completedRef = useRef(false)
 
-  // Cycle through the tips based on timing
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTipIndex((prev) => {
-        // If we are at the last tip
-        if (prev === tips.length - 1) {
-          clearInterval(interval);
-          // Give the user a moment (e.g., 2 seconds) to read the final tip before closing
-          setTimeout(() => {
-            onComplete?.();
-          }, 2000);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 2000); // Time per tip
+    if (completedRef.current) return
 
-    return () => clearInterval(interval);
-  }, [onComplete]);
+    if (apiDone) {
+      // API resolved — finish quickly and auto-transition
+      setTipIndex(tips.length - 1)
+      const t = setTimeout(() => {
+        if (completedRef.current) return
+        completedRef.current = true
+        onComplete?.()
+      }, 600)
+      return () => clearTimeout(t)
+    }
+
+    // API still processing — loop through tips continuously so the
+    // screen never looks frozen. The moment apiDone fires above,
+    // the interval is cancelled and we complete in 600ms.
+    const interval = setInterval(() => {
+      setTipIndex((prev) => (prev + 1) % tips.length)
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [apiDone, onComplete])
 
   return (
     <div className="flex flex-col items-center justify-center py-6 px-6 text-center">

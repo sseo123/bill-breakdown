@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Search, ShieldCheck, Sparkles, Zap } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 const steps = [
   { id: 1, text: "Scanning document structure...", icon: <Search className="w-5 h-5" /> },
@@ -13,12 +13,29 @@ const steps = [
 
 interface AnalyzingAnimationProps {
   onComplete?: () => void
+  apiDone?: boolean
 }
 
-export function AnalyzingAnimation({ onComplete }: AnalyzingAnimationProps) {
+export function AnalyzingAnimation({ onComplete, apiDone }: AnalyzingAnimationProps) {
   const [currentStep, setCurrentStep] = useState(0)
+  const completedRef = useRef(false)
 
+  // Step-advancing: normal interval OR instant jump when apiDone fires
   useEffect(() => {
+    if (completedRef.current) return
+
+    if (apiDone) {
+      // Jump to last step immediately and finish quickly
+      setCurrentStep(steps.length - 1)
+      const t = setTimeout(() => {
+        if (completedRef.current) return
+        completedRef.current = true
+        onComplete?.()
+      }, 600)
+      return () => clearTimeout(t)
+    }
+
+    // Normal: advance one step every 1700ms
     const interval = setInterval(() => {
       setCurrentStep((prev) => {
         if (prev < steps.length - 1) return prev + 1
@@ -26,16 +43,20 @@ export function AnalyzingAnimation({ onComplete }: AnalyzingAnimationProps) {
       })
     }, 1700)
     return () => clearInterval(interval)
-  }, [])
+  }, [apiDone, onComplete])
 
+  // When we reach the last step naturally, wait then complete
   useEffect(() => {
+    if (apiDone) return // handled above
     if (currentStep === steps.length - 1) {
       const timeout = setTimeout(() => {
+        if (completedRef.current) return
+        completedRef.current = true
         onComplete?.()
       }, 2200)
       return () => clearTimeout(timeout)
     }
-  }, [currentStep, onComplete])
+  }, [currentStep, onComplete, apiDone])
 
   return (
     <div className="flex flex-col items-center justify-center text-center">
