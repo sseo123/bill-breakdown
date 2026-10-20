@@ -395,10 +395,10 @@ export default function BillAnalyzer() {
                   totalErrors: data.errorAnalysis?.suspectedIssues?.length ?? 0,
                   totalPotentialSavings: data.regionalComparison?.estimatedAnnualSavings
                     ? `$${data.regionalComparison.estimatedAnnualSavings.toLocaleString()}/yr`
-                    : "$2,814/yr",
+                    : "N/A",
                   totalCO2Reduction: data.regionalComparison?.annualCO2ReductionTons
                     ? `${data.regionalComparison.annualCO2ReductionTons} tons/yr`
-                    : "6.5 tons/yr",
+                    : "N/A",
                   comparedToAverage: data.regionalComparison?.comparisonStatement ||
                     (data.regionalComparison?.comparison === "above"
                       ? "Above average for Northern California"
@@ -420,7 +420,7 @@ export default function BillAnalyzer() {
                     title: issue.issue,
                     description: issue.evidence,
                     amount: issue.amount ? `$${issue.amount}` : undefined,
-                    severity: "high",
+                    severity: (issue as any).severity ?? "high",
                     pageNumber: issue.pageNumber || 1,
                     pinX: Number.isFinite(issue.pinX) ? issue.pinX : 50,
                     pinY: Number.isFinite(issue.pinY) ? issue.pinY : 50,
@@ -440,8 +440,8 @@ export default function BillAnalyzer() {
                     id: i + 1,
                     title: tip.title || "Energy Saving Tip",
                     description: tip.action || tip.whyItFits || "",
-                    estimatedSaving: tip.estimatedMonthlySavings ? `$${tip.estimatedMonthlySavings}/mo` : "$47/mo",
-                    ecoImpact: "Reduces CO2 emissions",
+                    estimatedSaving: tip.estimatedMonthlySavings ? `$${tip.estimatedMonthlySavings}/mo` : "N/A",
+                    ecoImpact: "Reduces environmental impact",
                     category: "energy",
                     pageNumber: tip.pageNumber || 1,
                     pinX: Number.isFinite(tip.pinX) ? tip.pinX : 50,
