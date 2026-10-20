@@ -83,7 +83,7 @@ function stripCodeFences(text: string) {
   return text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim()
 }
 
-// Gemini가 가끔 앞/뒤에 말 붙여도 JSON만 뽑아오기
+// Gemini sometimes adds prose before/after the JSON — extract just the object
 function extractJsonObject(text: string) {
   const cleaned = stripCodeFences(text)
   const first = cleaned.indexOf("{")
@@ -172,8 +172,8 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
     }))
     .filter((t: any) => t.action)
 
-  // 3~5개 강제 (부족하면 빈 팁 넣지 말고 최소 3개까지만)
-  // 프론트에서 길이 체크 가능하도록 그냥 그대로 두되, 너무 많으면 컷.
+  // Enforce 3–5 tips: don't pad with empty items, just cap at 5.
+  // The UI can check the length; strip any extras here.
   const likelihoodPct = clampPct(errorAnalysis?.likelihoodPct)
   const verdict = normalizeVerdict(errorAnalysis?.verdict)
   const reasons = ensureArrayStrings(errorAnalysis?.reasons).slice(0, 6)
@@ -194,7 +194,7 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
     String(regionalComparison?.comparisonStatement ?? "").trim() ||
     (comparison === "above" ? "Above average for your region" : "About average for your region")
 
-  // mockEmail 규칙 보정: likelihood>=50 또는 suspectedIssues가 있으면 null이면 안 됨(최소 안내문)
+  // mockEmail business rule: if likelihood >= 50% or there are suspected issues, a draft email is required.
   let mockEmail: string | null =
     raw?.mockEmail === null || raw?.mockEmail === undefined
       ? null
@@ -303,14 +303,14 @@ RULES:
   const result = await model.generateContent([prompt, part])
   const text = result.response.text()
 
-  // 1차 파싱
+  // First parse attempt
   try {
     const jsonText = extractJsonObject(text)
     const parsed = JSON.parse(jsonText)
     const safe = sanitizeParsed(parsed)
     return JSON.stringify(safe)
   } catch (err) {
-    // 2차: JSON만 다시 강제
+    // Second attempt: ask the model to return only the JSON object
     const repairPrompt = `
 Your previous response was NOT valid JSON or did not follow the required schema.
 
@@ -368,16 +368,7 @@ export type BillMetrics = {
   usageUnit: string | null
 }
 
-function stripCodeFences2(text: string) {
-  return text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim()
-}
-function extractJsonObject2(text: string) {
-  const cleaned = stripCodeFences2(text)
-  const first = cleaned.indexOf("{")
-  const last = cleaned.lastIndexOf("}")
-  if (first === -1 || last === -1 || last <= first) throw new Error("No JSON found")
-  return cleaned.slice(first, last + 1)
-}
+
 
 export async function extractBillMetrics(base64File: string, fileType: string) {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
@@ -410,7 +401,7 @@ Rules:
 
   const res = await model.generateContent([prompt, part])
   const text = res.response.text()
-  const jsonText = extractJsonObject2(text)
+  const jsonText = extractJsonObject(text)
   const parsed = JSON.parse(jsonText) as BillMetrics
   return JSON.stringify(parsed)
 }

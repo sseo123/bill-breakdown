@@ -81,6 +81,19 @@ export default function BillAnalyzer() {
 
   const [animationFinished, setAnimationFinished] = useState(false);
 
+  // Memoize the object URL and revoke it when the file changes or the component unmounts
+  // to avoid browser memory leaks from orphaned blob URLs.
+  const fileUrl = useMemo(() => {
+    if (!pendingFile) return "";
+    const url = URL.createObjectURL(pendingFile);
+    return url;
+  }, [pendingFile]);
+
+  useEffect(() => {
+    return () => {
+      if (fileUrl) URL.revokeObjectURL(fileUrl);
+    };
+  }, [fileUrl]);
 
   const sortedTips = useMemo(() => {
     const tips = Array.isArray(data?.savingsTips) ? [...(data!.savingsTips as any)] : []
@@ -435,7 +448,7 @@ export default function BillAnalyzer() {
                     pinY: Number.isFinite(tip.pinY) ? tip.pinY : 50,
                   }))
               } as BillAnalysis}
-              fileUrl={pendingFile ? URL.createObjectURL(pendingFile) : ""}
+              fileUrl={fileUrl}
               onNewAnalysis={resetAll}
             />
           )}

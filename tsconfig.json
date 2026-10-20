@@ -1,3 +1,4 @@
+// so users can clone project
 {
   "compilerOptions": {
     "target": "ES2017",
