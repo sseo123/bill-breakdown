@@ -124,27 +124,8 @@ export function ResultsPage({
     }
   };
 
-  // Generate email draft
   const emailSubject = `Billing Errors on Account - ${analysis.providerName}`;
-  const emailBody = `Dear ${analysis.providerName} Customer Service,
-
-I am writing to report the following billing errors found on my recent utility bill. I kindly request a review and correction of these charges.
-
-${analysis.errors
-      .map(
-        (e, i) =>
-          `${i + 1}. ${e.title}${e.amount ? ` (${e.amount})` : ""}
-   ${e.description}`
-      )
-      .join("\n\n")}
-
-I would appreciate a prompt resolution and a corrected bill. Please contact me at your earliest convenience to discuss these discrepancies.
-
-Thank you for your attention to this matter.
-
-Sincerely,
-[Your Name]
-[Your Account Number]`;
+  const emailBody = analysis.emailDraft ?? "";
 
   const mailtoLink = `mailto:${analysis.providerEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
 
@@ -227,6 +208,12 @@ Sincerely,
           {/* Summary Stats */}
           <div className="w-full max-w-7xl mx-auto px-6 pb-8">
             <div className="flex flex-wrap gap-3">
+              <div
+                className={`flex items-center gap-2 border rounded-2xl px-5 py-3 text-sm font-black ring-4 ring-white shadow-sm ${severityColor(analysis.risk.verdict)}`}
+                title="Risk score estimated by the model, not a calibrated probability"
+              >
+                {analysis.risk.likelihoodPct}% Error Risk · {analysis.risk.verdict.charAt(0).toUpperCase() + analysis.risk.verdict.slice(1)}
+              </div>
               <div className="flex items-center gap-2 bg-red-50 text-red-500 border border-red-100 rounded-2xl px-5 py-3 text-sm font-black ring-4 ring-white shadow-sm">
                 <AlertTriangle className="w-4 h-4 text-red-400" />
                 {analysis.summary.totalErrors} Errors Found
@@ -363,14 +350,17 @@ Sincerely,
                           </div>
                         </motion.div>
                       ))}
+                    </>
+                  )}
 
-                      {/* Contact Provider Section */}
+                  {analysis.emailDraft && (
+                      /* Contact Provider Section */
                       <div className="bg-card border border-border rounded-2xl p-6 mt-2">
                         <h3 className="text-base font-semibold text-foreground mb-1">
                           Contact {analysis.providerName}
                         </h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Dispute these errors directly with your utility provider.
+                          Ask your utility provider to review this bill.
                         </p>
                         <div className="flex gap-3">
                           <button
@@ -474,7 +464,6 @@ Sincerely,
                           )}
                         </AnimatePresence>
                       </div>
-                    </>
                   )}
                 </motion.div>
               )}
@@ -489,6 +478,44 @@ Sincerely,
                   transition={{ duration: 0.25 }}
                   className="flex flex-col gap-4 w-full"
                 >
+                  <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm mb-2">
+                    <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-lg">
+                          Your bill vs. your area
+                        </h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                          AI estimate • {analysis.summary.comparedToAverage}
+                        </p>
+                      </div>
+                      <div className="flex gap-3">
+                        {analysis.regional.totalAmount !== null && (
+                          <div className="px-4 py-3 rounded-2xl border bg-slate-50 border-slate-100 text-center min-w-[120px]">
+                            <p className="text-xl font-black leading-tight text-slate-800">
+                              ${analysis.regional.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                            <p className="text-[8px] font-black uppercase tracking-widest mt-0.5 text-slate-400">
+                              Your Bill
+                            </p>
+                          </div>
+                        )}
+                        <div className="px-4 py-3 rounded-2xl border bg-emerald-50/50 border-emerald-100 text-center min-w-[120px]">
+                          <p className="text-xl font-black leading-tight text-emerald-600">
+                            {analysis.regional.estimatedAverageRange}
+                          </p>
+                          <p className="text-[8px] font-black uppercase tracking-widest mt-0.5 text-emerald-500/70">
+                            Typical Range
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    {analysis.regional.explanation && (
+                      <p className="text-sm text-slate-500 leading-relaxed font-medium">
+                        {analysis.regional.explanation}
+                      </p>
+                    )}
+                  </div>
+
                   {analysis.savings.map((saving) => (
                     <motion.div
                       key={saving.id}

@@ -12,7 +12,6 @@ export type BillAnalysisJson = {
   errorAnalysis: {
     likelihoodPct: number
     verdict: ErrorVerdict
-    reasons: string[]
     suspectedIssues: Array<{
       issue: string
       evidence: string
@@ -50,6 +49,16 @@ export interface BillAnalysis {
   providerName: string;
   providerEmail: string;
   providerPhone?: string;
+  risk: {
+    likelihoodPct: number;
+    verdict: ErrorVerdict;
+  };
+  emailDraft: string | null;
+  regional: {
+    totalAmount: number | null;
+    estimatedAverageRange: string;
+    explanation: string;
+  };
   summary: {
     totalErrors: number;
     totalPotentialSavings: string;
@@ -98,14 +107,6 @@ function clampPct(n: any) {
   const x = Number(n)
   if (!Number.isFinite(x)) return 0
   return Math.max(0, Math.min(100, Math.round(x)))
-}
-
-function ensureArrayStrings(v: any) {
-  if (!Array.isArray(v)) return []
-  return v
-    .filter((x) => typeof x === "string")
-    .map((s) => s.trim())
-    .filter(Boolean)
 }
 
 function normalizeBillType(v: any): BillType {
@@ -176,7 +177,6 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
   // The UI can check the length; strip any extras here.
   const likelihoodPct = clampPct(errorAnalysis?.likelihoodPct)
   const verdict = normalizeVerdict(errorAnalysis?.verdict)
-  const reasons = ensureArrayStrings(errorAnalysis?.reasons).slice(0, 6)
 
   const providerName = String(regionalComparison?.providerName ?? "").trim() || null
   const providerEmail = String(regionalComparison?.providerEmail ?? "").trim() || null
@@ -211,7 +211,6 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
     errorAnalysis: {
       likelihoodPct,
       verdict,
-      reasons,
       suspectedIssues,
     },
     mockEmail,
@@ -233,7 +232,8 @@ function sanitizeParsed(raw: any): BillAnalysisJson {
 
 export async function analyzeBill(base64File: string, fileType: string) {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
-
+  
+  // we only care for the base64 content and not the prefix
   const base64 = base64File.includes(",") ? base64File.split(",")[1] : base64File
 
   const prompt = `
@@ -250,7 +250,6 @@ Return ONLY a valid JSON object matching EXACTLY the schema below (no extra keys
   "errorAnalysis": {
     "likelihoodPct": number,
     "verdict": "low" | "medium" | "high",
-    "reasons": string[],
     "suspectedIssues": [
       { 
         "issue": string, "evidence": string, "amount": number | null,
@@ -282,6 +281,7 @@ Return ONLY a valid JSON object matching EXACTLY the schema below (no extra keys
 RULES:
 - likelihoodPct is the probability (0-100) that this bill contains an error or suspicious charge based on what you can see.
 - If likelihoodPct >= 50 OR suspectedIssues has at least 1 item, mockEmail MUST be a complete dispute email. Otherwise null.
+- mockEmail is the plain-text email body only (no subject line). Cite each suspected issue with its amount, and end with "[Your Name]" and "[Account Number]" placeholders.
 - regionalComparison MUST be based on the ZIP code found on the bill. If ZIP is unknown, say it is an estimate and use a broad average range.
 - estimatedAnnualSavings is the TOTAL expected annual savings if ALL savingsTips are implemented.
 - annualCO2ReductionTons is the TOTAL expected annual CO2 reduction in tons (e.g. 6.5) if eco-friendly tips are followed.
@@ -292,11 +292,11 @@ RULES:
 - IMPORTANT: For the (pinX, pinY) coordinates, choose a location in the **WHITESPACE** or **MARGIN** near the relevant text. Do NOT place the pin directly on top of the text; offset it slightly so the numbered circle does not cover any letters or numbers.
 `
 
-
+  // gemini now has the bill as a string and instrutions
   const part = {
     inlineData: {
       data: base64,
-      mimeType: fileType, // e.g. image/png, image/jpeg, application/pdf
+      mimeType: fileType, // what to decode string as
     },
   }
 
@@ -319,7 +319,6 @@ Return ONLY the JSON object with EXACTLY this structure (no extra keys):
   "errorAnalysis": {
     "likelihoodPct": number,
     "verdict": "low" | "medium" | "high",
-    "reasons": string[],
     "suspectedIssues": [
       { 
         "issue": string, "evidence": string, "amount": number | null,

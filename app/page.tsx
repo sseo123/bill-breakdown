@@ -22,7 +22,7 @@ type ParsedData = {
 
   errorAnalysis?: {
     likelihoodPct?: number
-    reasons?: string[]
+    verdict?: "low" | "medium" | "high"
     suspectedIssues?: Array<{
       issue: string
       evidence: string
@@ -33,7 +33,7 @@ type ParsedData = {
     }>
   }
 
-  mockEmail?: string
+  mockEmail?: string | null
 
   savingsTips?: Array<{
     title?: string
@@ -49,7 +49,7 @@ type ParsedData = {
     providerName?: string | null
     providerEmail?: string | null
     billType?: string
-    totalAmount?: number
+    totalAmount?: number | null
     comparison?: "above" | "below" | "about_average" | string
     estimatedAverageRange?: string
     explanation?: string
@@ -75,9 +75,6 @@ export default function BillAnalyzer() {
 
   const analysisDoneRef = useRef(false)
   const savingsPhaseEnteredAtRef = useRef<number | null>(null)
-
-  const likelihoodPct = data?.errorAnalysis?.likelihoodPct ?? 0
-  const suspicious = likelihoodPct >= 50
 
   const [animationFinished, setAnimationFinished] = useState(false);
 
@@ -129,6 +126,8 @@ export default function BillAnalyzer() {
     savingsPhaseEnteredAtRef.current = null
   }
 
+
+  // when file gets detected, it calls onDrop, and sets pendingFile to the file
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) setPendingFile(acceptedFiles[0])
   }, [])
@@ -148,10 +147,12 @@ export default function BillAnalyzer() {
     setData(null)
     analysisDoneRef.current = false
 
+    // this runs the backend function analyzeBill() in server side and returns the response
     try {
       const base64 = await readFileAsDataURL(file)
       const response = await analyzeBill(base64, file.type)
 
+      // parsing the response
       try {
         const parsed = JSON.parse(response) as ParsedData
         setData(parsed)
@@ -167,6 +168,7 @@ export default function BillAnalyzer() {
     }
   }
 
+  // once user clicks analyize 
   const handleGenerate = async () => {
     if (!pendingFile) return
 
@@ -391,6 +393,16 @@ export default function BillAnalyzer() {
               analysis={{
                 providerName: data.regionalComparison?.providerName || (data.regionalComparison?.billType === "electric" ? "Electric Provider" : "Utility Provider"),
                 providerEmail: data.regionalComparison?.providerEmail || "customer.service@provider.com",
+                risk: {
+                  likelihoodPct: data.errorAnalysis?.likelihoodPct ?? 0,
+                  verdict: data.errorAnalysis?.verdict ?? "low",
+                },
+                emailDraft: data.mockEmail ?? null,
+                regional: {
+                  totalAmount: data.regionalComparison?.totalAmount ?? null,
+                  estimatedAverageRange: data.regionalComparison?.estimatedAverageRange || "Unknown",
+                  explanation: data.regionalComparison?.explanation || "",
+                },
                 summary: {
                   totalErrors: data.errorAnalysis?.suspectedIssues?.length ?? 0,
                   totalPotentialSavings: data.regionalComparison?.estimatedAnnualSavings
@@ -502,23 +514,8 @@ export default function BillAnalyzer() {
 
 /* ===================== Helpers ===================== */
 
-function ComparisonBadge({ value }: { value?: string }) {
-  const v = value ?? "about_average"
-  const label = v === "above" ? "Above Average" : v === "below" ? "Below Average" : "About Average"
-  const cls =
-    v === "above"
-      ? "bg-red-600 text-white"
-      : v === "below"
-        ? "bg-emerald-600 text-white"
-        : "bg-gray-200 text-gray-800"
 
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>
-      {label}
-    </span>
-  )
-}
-
+// file is converted to base 64, so gemini''s api can read the content inside the request we send - inline
 function readFileAsDataURL(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
