@@ -120,7 +120,7 @@ export default function BillAnalyzer() {
     },
   })
 
-  // file is converted to base 64, so gemini''s api can read the content inside the request we send - inline
+  // file is converted to base 64, so gemini's api can read the content inside the request we send - inline
   function readFileAsDataURL(file: File) {
     return new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
@@ -139,6 +139,8 @@ export default function BillAnalyzer() {
     // this runs the backend function analyzeBill() in server side and returns the response
     try {
       const base64 = await readFileAsDataURL(file)
+
+      // server action
       const response = await analyzeBill(base64, file.type)
 
       // parsing the response
