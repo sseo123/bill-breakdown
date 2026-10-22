@@ -92,27 +92,6 @@ export default function BillAnalyzer() {
     };
   }, [fileUrl]);
 
-  const sortedTips = useMemo(() => {
-    const tips = Array.isArray(data?.savingsTips) ? [...(data!.savingsTips as any)] : []
-    return tips.sort(
-      (a: any, b: any) => (b?.estimatedMonthlySavings ?? -1) - (a?.estimatedMonthlySavings ?? -1)
-    )
-  }, [data])
-
-  const showToast = (type: "ok" | "err", msg: string) => {
-    setToast({ type, msg })
-    window.setTimeout(() => setToast(null), 2200)
-  }
-
-  const handleCopy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      showToast("ok", "Copied!")
-    } catch {
-      showToast("err", "Copy failed. Please copy manually.")
-    }
-  }
-
   const resetAll = () => {
     setView("UPLOAD")
     setLoadingPhase("drag-drop")
@@ -140,6 +119,16 @@ export default function BillAnalyzer() {
       "image/*": [".png", ".jpg", ".jpeg"],
     },
   })
+
+  // file is converted to base 64, so gemini''s api can read the content inside the request we send - inline
+  function readFileAsDataURL(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => reject(new Error("Failed to read file"))
+      reader.readAsDataURL(file)
+    })
+  }
 
   const runAnalysis = async (file: File) => {
     setLoading(true)
@@ -512,18 +501,8 @@ export default function BillAnalyzer() {
   )
 }
 
-/* ===================== Helpers ===================== */
 
 
-// file is converted to base 64, so gemini''s api can read the content inside the request we send - inline
-function readFileAsDataURL(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error("Failed to read file"))
-    reader.readAsDataURL(file)
-  })
-}
 
 function CheckIcon() {
   return (
